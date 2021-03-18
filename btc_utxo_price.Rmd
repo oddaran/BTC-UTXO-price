@@ -1,0 +1,65 @@
+---
+title: "Bitcoin price and UTXO"
+author: "Daran Thach"
+date: "3/17/2021"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+The blockchain universe can be divided into two main architectures for record-keeping of output transactions: 1) UTXO-Based: Bitcoin, Bitcoin Cash, Litecoin, Dash, and 2) Account-Based: Ethereum, Ethereum Classic.  Beyond being a critical architecture of some of the main blockchains in the market, UTXOs are also a unique source of intelligence, and thus may help us understand unique characteristics of buyers and sellers.  Using blockchain.com data, I used R to import, find descriptive stats, cleaned, prepared UTXO/price data of BTC for the last 2 years, in order to compile correlation analysis between the two.
+
+```{r include=TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+
+#import the bitcoin excel values
+btcdata <- read.csv("btc_utxo_price.csv")
+
+#find descriptive stats
+summary(btcdata)
+#find variance and price samples
+var(btcdata)
+head(btcdata$price_usdavg)
+#convert factor to date data
+as.Date.character(btcdata$endweek, tryFormats = c("%m/%d/%Y"))
+
+# Visualize time series and plots
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+
+# Multiple ts plot change aesthetics and labels
+chart <- btcdata %>%
+  select(endweek, utxo_average, price_usdavg) %>%
+  gather(key = "variable", value = "value", -endweek)
+head(chart, 3)
+g <- ggplot(chart, aes(x = endweek, y = value)) + 
+  geom_line(aes(color = variable), size = 1) +
+  scale_color_manual(values = c("#33CC33", "#0066FF")) +
+  theme_minimal()
+g <- g + labs(title = "BTC Unspent Transaction Output", 
+  caption = "Source: blockchain.info")
+g
+
+# Correlate the ts plots by determining linearity and nml dist
+library(ggpubr)
+# plot for utxo
+ggqqplot(btcdata$utxo_average, ylab = "UTXO")
+# plot for price
+ggqqplot(btcdata$price_usdavg, ylab = "Price USD")
+
+# Use Spearman rank correlation coefficient
+rank <-cor.test(btcdata$utxo_average, btcdata$price_usdavg, method = "spearman")
+rank
+ggscatter(btcdata, x = "utxo_average", y = "price_usdavg", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "Unspent transaction output", ylab = "Price in USD")
+
+```
+# End of R script
+The above outputs generated time series plots upon changing aesthetics/labels, then applied statistical linearity testing, and Spearman rank correlation.  Revealed UTXO moderately correlated to price of BTC.
